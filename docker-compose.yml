@@ -2,6 +2,11 @@ version: '3'
 
 # set database password in .env
 # please don't use quote (') or (") symbols in variables
+networks: 
+  web:
+    external: true
+  internal: 
+    external: false
 
 services:
   db:
@@ -12,6 +17,10 @@ services:
     environment:    
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_USER=${POSTGRES_USER}
+    labels: 
+      - traefik.enable=false
+    networks: 
+      - internal
 
   app:
     image: cthulhoo/ttrss-fpm-pgsql-static
@@ -29,6 +38,10 @@ services:
       - app:/var/www/html
     depends_on:
       - db
+    labels: 
+      - traefik.enable=false
+    networks: 
+      - internal
 
   updater:
     image: cthulhoo/ttrss-fpm-pgsql-static
@@ -47,6 +60,10 @@ services:
     depends_on:
       - app
     command: /updater.sh
+    labels: 
+      - traefik.enable=false
+    networks: 
+      - internal
 
   backups:
     image: cthulhoo/ttrss-fpm-pgsql-static
@@ -65,6 +82,10 @@ services:
     depends_on:
       - db
     command: /dcron.sh -f
+    labels: 
+      - traefik.enable=false
+    networks: 
+      - internal
 
 #  web:
 #    image: cthulhoo/ttrss-web
@@ -95,11 +116,18 @@ services:
     image: cthulhoo/ttrss-web-nginx
     restart: unless-stopped
     ports:
-      - ${HTTP_PORT}:80
+      - '80'
     volumes:
       - app:/var/www/html:ro
     depends_on:
       - app
+    networks: 
+      - web
+      - internal
+    labels: 
+      - traefik.backend=$BLOG_NAME
+      - traefik.frontend.rule=Host:$BLOG_NAME.$MY_DOMAIN
+      - traefik.docker.network=web
 
 volumes:
   db:
